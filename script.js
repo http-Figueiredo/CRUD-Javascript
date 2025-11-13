@@ -13,32 +13,43 @@ const miniRedeSocial = {
     ],
     posts: [
         {
-            id: 1,
+            id: Date.now(),
             owner: 'http-figueiredo',
             content: 'Meu primeiro tweet'
         }
     ], 
     lePosts() {
-        miniRedeSocial.posts.forEach(({ owner, content }) => {
-            miniRedeSocial.criaPost({ owner: owner, content: content }, true); // esse true serve para identificar que será criado na memória
+        miniRedeSocial.posts.forEach(({ id, owner, content }) => {
+            miniRedeSocial.criaPost({ id, owner: owner, content: content }, true); // esse true serve para identificar que será criado na memória
         })
     },
     criaPost(dados, htmlOnly = false) { // htmlOnly necessario, se não o post com id: 1, aparece duplicado (pois cria na memória e no html)
+        const idInterno = dados.id || Date.now(); // se já existir id, puxa dos dados, se não, cria um novo
+        
         if (!htmlOnly){
+            //Cria o post na memória
             miniRedeSocial.posts.push({
-                id: miniRedeSocial.posts.length + 1,
+                id: idInterno,
                 owner: dados.owner,
                 content: dados.content, 
             });
         }
+
         //Cria Post no HTML
         const $listaDePosts = document.querySelector('.listaDePosts');
         $listaDePosts.insertAdjacentHTML('afterbegin',`
-            <li>
+            <li data-id="${idInterno}">
                 ${dados.content}
-                <button>Deletar</button>
+                <button class="btn-deletar">Deletar</button>
             </li>
         `);
+    },
+    apagaPost(id) {
+        const listaDePostsAtualizada = miniRedeSocial.posts.filter((postAtual) => {
+            return postAtual.id !== Number(id);
+        })
+        miniRedeSocial.posts = listaDePostsAtualizada;
+        console.log(listaDePostsAtualizada);
     }
 };
 
@@ -61,3 +72,15 @@ $meuForm.addEventListener('submit', function criaPostController(info) { //Detect
 miniRedeSocial.lePosts();
 
 //CRUD: [DELETE]
+document.querySelector('.listaDePosts').addEventListener('click', function (infosDoEvento) {
+    const elementoAtual = infosDoEvento.target; // Detecta em que o usuario clicou
+    const cliqueBtnDeletar = elementoAtual.classList.contains("btn-deletar") // Detecta clique em botoes apenas com a classe "btn-deletar"
+    if (cliqueBtnDeletar) {
+        const id = elementoAtual.parentNode.getAttribute('data-id') // Deleta o parente do botão ( <li></li> )
+        
+        // Manipula ServerSide/banco de dados
+        miniRedeSocial.apagaPost(id); // Deleta do banco de dados
+        // Manipula o View/output
+        elementoAtual.parentNode.remove();
+    
+    }})
