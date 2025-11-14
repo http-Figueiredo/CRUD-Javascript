@@ -3,104 +3,110 @@
 // 2 - Sincronizar Conteúdo das variáveis com o HTML
 // 3 - Atualiza as variáveis
 
-// Banco de Dados -->
+// Função para salvar os posts no localStorage (para fins de teste)
+function salvarPosts() {
+    localStorage.setItem('bancoDePosts', JSON.stringify(miniRedeSocial.posts));
+}
 
 const miniRedeSocial = {
     usuarios: [
-        {
-            username: 'http-figueiredo',
-        }
+        { username: 'http-figueiredo' }
     ],
-    posts: [
-        {
-            id: Date.now(),
-            owner: 'http-figueiredo',
-            content: 'Meu primeiro tweet'
-        }
-    ], 
-    criaPost(dados, htmlOnly = false) { // htmlOnly necessario, se não o post com id: 1, aparece duplicado (pois cria na memória e no html)
-        const idInterno = dados.id || Date.now(); // se já existir id, puxa dos dados, se não, cria um novo
-        
-        if (!htmlOnly){
-            //Cria o post na memória
+    posts: [], // será preenchido pelo localStorage
+
+    criaPost(dados, htmlOnly = false) {
+        const idInterno = dados.id || Date.now(); // Se ja existir post criado, pega o id dele.. Senão cria um novo.
+
+        if (!htmlOnly) {      
+            // evita criar posts vazios
+            if (!dados.content || !dados.content.trim()) return;
+            
             miniRedeSocial.posts.push({
                 id: idInterno,
                 owner: dados.owner,
-                content: dados.content, 
+                content: dados.content,
             });
+            salvarPosts();
         }
-        
-        //Cria Post no HTML
+
+        // Cria Post no HTML
         const $listaDePosts = document.querySelector('.listaDePosts');
-        $listaDePosts.insertAdjacentHTML('afterbegin',`
-            <li data-id="${idInterno}"> 
-            <span contenteditable> 
-            ${dados.content}
-            </span>
-            <button class="btn-deletar">Deletar</button>
+        $listaDePosts.insertAdjacentHTML('afterbegin', `
+            <li data-id="${idInterno}">
+                <span contenteditable>${dados.content}</span>
+                <button class="btn-deletar">Deletar</button>
             </li>
-            `); // <span contenteditable> faz com que seja possível editar o conteudo do post
-        },
-        lePosts() {
-            miniRedeSocial.posts.forEach(({ id, owner, content }) => {
-                miniRedeSocial.criaPost({ id, owner: owner, content: content }, true); // esse true serve para identificar que será criado na memória
-            })
-        },
-        AtualizaPost( id, novoConteudo) {
-            const postAtualizado = miniRedeSocial.posts.find((post) => {
-                return post.id === Number(id);
-        });
-        console.log(postAtualizado);
-        postAtualizado.content = novoConteudo;
+        `);
     },
+
+    lePosts() {
+        const postsDoLocalStorage = JSON.parse(localStorage.getItem('bancoDePosts')) || [];
+        miniRedeSocial.posts = postsDoLocalStorage;
+
+        // RENDERIZA os posts lidos do localStorage (somente HTML, sem duplicar na memória)
+        postsDoLocalStorage.forEach(post => {
+            miniRedeSocial.criaPost(post, true);
+        });
+    },
+
+    AtualizaPost(id, novoConteudo) {
+        const postAtualizado = miniRedeSocial.posts.find(post => 
+            post.id === Number(id)
+        );
+        if (postAtualizado) {
+            postAtualizado.content = novoConteudo;
+            salvarPosts();
+        }
+    },
+
     apagaPost(id) {
-        const listaDePostsAtualizada = miniRedeSocial.posts.filter((postAtual) => {
-            return postAtual.id !== Number(id);
-        })
+        const listaDePostsAtualizada = miniRedeSocial.posts.filter(postAtual => 
+            postAtual.id !== Number(id)
+        );
         miniRedeSocial.posts = listaDePostsAtualizada;
-        console.log(listaDePostsAtualizada);
+        salvarPosts();
     }
 };
 
-// Código de front end: Web ->
-    const $meuForm = document.querySelector('form');
-    console.log($meuForm);
+// FRONT-END
+const $meuForm = document.querySelector('form');
 
-//CRUD: [CREATE]
-$meuForm.addEventListener('submit', function criaPostController(info) { //Detecta o primeiro evento 'submit' e aciona a função. 
-    info.preventDefault(); //Previne que a página recarregue quando enviar o formulário
-    console.log("Post criado");
-    const $campoCriaPost = document.querySelector('input[name="campoCriaPost"]'); //'input[name=""]' para detectar um input específico dentro do formulário
-    
-    miniRedeSocial.criaPost({ owner: "http-figueiredo", content: $campoCriaPost.value });
+// CREATE
+$meuForm.addEventListener('submit', function criaPostController(info) {
+    info.preventDefault();
+    const $campoCriaPost = document.querySelector('input[name="campoCriaPost"]');
+    const conteudo = $campoCriaPost.value.trim();
+    if (!conteudo) {
+        alert('Não é possível criar posts vazios!');
+        return; // evita posts vazios
+    }
+    miniRedeSocial.criaPost({ owner: "http-figueiredo", content: conteudo });
 
     $campoCriaPost.value = '';
 });
 
-//CRUD: [READ]
+// READ -> carrega e renderiza
 miniRedeSocial.lePosts();
 
-
-//CRUD: [UPDATE]
-
+// UPDATE
 document.querySelector('.listaDePosts').addEventListener('input', function (infosDoEvento) {
     const elementoAtual = infosDoEvento.target;
+    // só atualiza se for o span contenteditable
+    if (elementoAtual.tagName.toLowerCase() !== 'span') return;
+
     const id = elementoAtual.parentNode.getAttribute('data-id');
-    let conteudo = elementoAtual.innerText;
-    
+    const conteudo = elementoAtual.innerText;
     miniRedeSocial.AtualizaPost(id, conteudo);
 });
 
-//CRUD: [DELETE]
+// DELETE
 document.querySelector('.listaDePosts').addEventListener('click', function (infosDoEvento) {
-    const elementoAtual = infosDoEvento.target; // Detecta em que o usuario clicou
-    const cliqueBtnDeletar = elementoAtual.classList.contains("btn-deletar") // Detecta clique em botoes apenas com a classe "btn-deletar"
+    const elementoAtual = infosDoEvento.target;
+    const cliqueBtnDeletar = elementoAtual.classList.contains("btn-deletar");
     if (cliqueBtnDeletar) {
-        const id = elementoAtual.parentNode.getAttribute('data-id') // Deleta o parente do botão ( <li></li> )
-        
-        // Manipula ServerSide/banco de dados
-        miniRedeSocial.apagaPost(id); // Deleta do banco de dados
-        // Manipula o View/output
-        elementoAtual.parentNode.remove();
-    
-    }});
+        const id = elementoAtual.parentNode.getAttribute('data-id');
+        miniRedeSocial.apagaPost(id); // remove do 'banco'
+        elementoAtual.parentNode.remove(); // remove da view
+    }
+});
+console.log(miniRedeSocial.posts); // para verificar o conteúdo do 'banco de dados'
