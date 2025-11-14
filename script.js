@@ -18,11 +18,6 @@ const miniRedeSocial = {
             content: 'Meu primeiro tweet'
         }
     ], 
-    lePosts() {
-        miniRedeSocial.posts.forEach(({ id, owner, content }) => {
-            miniRedeSocial.criaPost({ id, owner: owner, content: content }, true); // esse true serve para identificar que será criado na memória
-        })
-    },
     criaPost(dados, htmlOnly = false) { // htmlOnly necessario, se não o post com id: 1, aparece duplicado (pois cria na memória e no html)
         const idInterno = dados.id || Date.now(); // se já existir id, puxa dos dados, se não, cria um novo
         
@@ -34,15 +29,29 @@ const miniRedeSocial = {
                 content: dados.content, 
             });
         }
-
+        
         //Cria Post no HTML
         const $listaDePosts = document.querySelector('.listaDePosts');
         $listaDePosts.insertAdjacentHTML('afterbegin',`
-            <li data-id="${idInterno}">
-                ${dados.content}
-                <button class="btn-deletar">Deletar</button>
+            <li data-id="${idInterno}"> 
+            <span contenteditable> 
+            ${dados.content}
+            </span>
+            <button class="btn-deletar">Deletar</button>
             </li>
-        `);
+            `); // <span contenteditable> faz com que seja possível editar o conteudo do post
+        },
+        lePosts() {
+            miniRedeSocial.posts.forEach(({ id, owner, content }) => {
+                miniRedeSocial.criaPost({ id, owner: owner, content: content }, true); // esse true serve para identificar que será criado na memória
+            })
+        },
+        AtualizaPost( id, novoConteudo) {
+            const postAtualizado = miniRedeSocial.posts.find((post) => {
+                return post.id === Number(id);
+        });
+        console.log(postAtualizado);
+        postAtualizado.content = novoConteudo;
     },
     apagaPost(id) {
         const listaDePostsAtualizada = miniRedeSocial.posts.filter((postAtual) => {
@@ -71,6 +80,17 @@ $meuForm.addEventListener('submit', function criaPostController(info) { //Detect
 //CRUD: [READ]
 miniRedeSocial.lePosts();
 
+
+//CRUD: [UPDATE]
+
+document.querySelector('.listaDePosts').addEventListener('input', function (infosDoEvento) {
+    const elementoAtual = infosDoEvento.target;
+    const id = elementoAtual.parentNode.getAttribute('data-id');
+    let conteudo = elementoAtual.innerText;
+    
+    miniRedeSocial.AtualizaPost(id, conteudo);
+});
+
 //CRUD: [DELETE]
 document.querySelector('.listaDePosts').addEventListener('click', function (infosDoEvento) {
     const elementoAtual = infosDoEvento.target; // Detecta em que o usuario clicou
@@ -83,4 +103,4 @@ document.querySelector('.listaDePosts').addEventListener('click', function (info
         // Manipula o View/output
         elementoAtual.parentNode.remove();
     
-    }})
+    }});
